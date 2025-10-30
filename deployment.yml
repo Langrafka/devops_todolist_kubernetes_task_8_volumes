@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todoapp
+  namespace: todoapp
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: todoapp
+  template:
+    metadata:
+      labels:
+        app: todoapp
+    spec:
+      containers:
+      - name: todoapp
+        image: ikulyk404/todoapp:3.0.0
+        
+        command: ["/bin/bash"]
+        args:
+          - "-c"
+          - "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+        volumeMounts:
+        - name: data
+          mountPath: /app/data 
+        - name: app-secrets-volume
+          mountPath: "/app/secrets"
+          readOnly: true
+        - name: app-config-volume
+          mountPath: "/app/configs"
+          readOnly: true
+
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "150m"
+          limits:
+            memory: "256Mi"
+            cpu: "150m"
+            
+        env:
+        - name: PYTHONUNBUFFERED 
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: PYTHONUNBUFFERED
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: SECRET_KEY
+              
+        ports:
+        - containerPort: 8000
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /api/ready
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          
+      volumes:
+      # Зв'язок з PVC
+      - name: data
+        persistentVolumeClaim:
+          claimName: pvc-data
+      # Зв'язок з Secret
+      - name: app-secrets-volume
+        secret:
+          secretName: app-secret
+      # Зв'язок з ConfigMap
+      - name: app-config-volume
+        configMap:
+          name: app-config
