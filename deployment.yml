@@ -73,15 +73,12 @@ spec:
           periodSeconds: 5
           
       volumes:
-      # Зв'язок з PVC
       - name: data
         persistentVolumeClaim:
-          claimName: pvc-data
-      # Зв'язок з Secret
+          claimName: todo-pvc
       - name: app-secrets-volume
         secret:
           secretName: app-secret
-      # Зв'язок з ConfigMap
       - name: app-config-volume
         configMap:
           name: app-config
